@@ -88,6 +88,13 @@ class BrowserInstance:
 
         self.touch()
         logger.debug(f"[BrowserPool] 释放实例 {self.instance_id}, ref_count: {self.ref_count}")
+    
+    async def force_release(self) -> None:
+        """强制释放实例（用于处理异常情况）"""
+        self.ref_count = 0
+        self.state = InstanceState.IDLE
+        self.touch()
+        logger.warning(f"[BrowserPool] 强制释放实例 {self.instance_id}, 重置为IDLE状态")
 
     async def close(self) -> None:
         """关闭实例"""
@@ -263,15 +270,31 @@ class PlatformBrowserPool:
             if self._is_closed:
                 raise RuntimeError(f"浏览器池 {self.platform} 已关闭")
 
-            # 如果有可用实例，直接使用
-            if self.instance and not self.instance.is_expired and self.instance.state in [InstanceState.IDLE, InstanceState.BUSY]:
+            # 如果有可用实例（IDLE状态且未过期），直接使用
+            if self.instance and not self.instance.is_expired and self.instance.state == InstanceState.IDLE:
                 await self.instance.acquire()
                 return self.instance
 
-            # 如果实例过期或不存在，创建新实例
+            # 如果实例存在但不可用（BUSY或已过期），处理它
             if self.instance:
-                logger.info(f"[BrowserPool] {self.platform} 实例已过期，创建新实例")
-                await self.instance.close()
+                if self.instance.is_expired:
+                    logger.info(f"[BrowserPool] {self.platform} 实例已过期，创建新实例")
+                    await self.instance.close()
+                elif self.instance.state == InstanceState.BUSY:
+                    # 检查实例是否卡住（BUSY状态超过60秒）
+                    busy_time = time.time() - self.instance.last_used
+                    if busy_time > 60:
+                        logger.warning(f"[BrowserPool] {self.platform} 实例 {self.instance.instance_id} BUSY状态超过60秒，强制释放")
+                        await self.instance.force_release()
+                        logger.info(f"[BrowserPool] {self.platform} 实例已释放，重新使用")
+                        await self.instance.acquire()
+                        return self.instance
+                    else:
+                        logger.info(f"[BrowserPool] {self.platform} 实例正在使用中 (BUSY {busy_time:.1f}s)，创建新实例")
+                        await self.instance.close()
+                else:
+                    logger.info(f"[BrowserPool] {self.platform} 实例状态异常: {self.instance.state}, 创建新实例")
+                    await self.instance.close()
 
             self.instance = await self._create_instance()
             await self.instance.acquire()

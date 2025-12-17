@@ -642,6 +642,7 @@ async def _handle_qrcode_login(session: LoginSession, login_obj: BilibiliLogin,
             finally:
                 await asyncio.sleep(2)
                 await _cleanup_session_resources(session)
+                await browser_manager.release_context(Platform.BILIBILI.value, keep_alive=False)
 
         task = asyncio.create_task(_poll_qrcode())
         session.runtime["task"] = task

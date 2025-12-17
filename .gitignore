@@ -6,3 +6,4 @@ MediaCrawler/
 browser_data/
 nul
 *.pyc
+.env

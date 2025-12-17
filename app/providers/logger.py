@@ -34,7 +34,7 @@ class Logger:
             retention_days: 日志保留天数
         """
         self.name = name
-        self.level = level
+        self.level = level.upper()  # 转换为大写，兼容不同大小写格式
         self.log_file = log_file
         self.enable_file = enable_file
         self.enable_console = enable_console
