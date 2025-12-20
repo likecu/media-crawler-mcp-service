@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 测试结果
+xhs_search_results.json
+大模型面试帖子/
+
+# 虚拟环境
+venv/
+env/
+*.venv/
+
+# 日志文件
+*.log
+logs/
+
+# 配置文件
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+
+# 测试覆盖率
+.coverage
+htmlcov/
+
+# 构建产物
+dist/
+build/
+*.egg-info/
+
+# 嵌入的git仓库
+media-crawler-mcp-service/

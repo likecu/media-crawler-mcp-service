@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "media-crawler-mcp": {
+      "command": "python",
+      "args": [
+        "main.py"
+      ],
+      "cwd": "/Volumes/600g/app1/小红书/media-crawler-mcp-service",
+      "port": 9091
+    }
+  }
+}
