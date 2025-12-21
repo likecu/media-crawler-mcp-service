@@ -33,6 +33,7 @@ xhs_tools.json
 clean_config.json
 
 # IDE
+.trae/
 .vscode/
 .idea/
 *.swp

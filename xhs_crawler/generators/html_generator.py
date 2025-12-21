@@ -7,6 +7,9 @@ HTML网页生成工具
 import time
 from typing import List, Dict, Any
 
+# 导入 Neon 数据库模块
+from xhs_crawler.core.database import get_neon_database
+
 
 def generate_post_html(post: Dict[str, Any], index: int) -> str:
     """
@@ -134,6 +137,14 @@ def generate_html(posts: List[Dict[str, Any]], html_file: str, title: str = "大
             f.write(html_content)
         print(f"✅ HTML网页已生成: {html_file}")
         print(f"📊 共生成 {len(posts)} 篇帖子")
+        
+        # 上传到 Neon 数据库
+        print("📤 正在将HTML文件上传到 Neon 数据库...")
+        db = get_neon_database()
+        if db:
+            db.upload_file(html_file)
+            db.close()
+        
         return True
     except Exception as e:
         print(f"❌ 生成HTML失败: {e}")

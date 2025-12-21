@@ -147,12 +147,13 @@ def summarize_posts():
         script_path = os.path.join("xhs_crawler", "summarizers", "summarize_posts.py")
         if os.path.exists(script_path):
             print(f"🔍 执行脚本: {script_path}")
+            # 使用cwd参数确保脚本在正确的目录下运行
             result = subprocess.run(
                 ["python3", script_path],
                 capture_output=True,
                 text=True,
                 encoding="utf-8",
-                timeout=300  # 设置5分钟超时
+                timeout=600  # 设置10分钟超时，处理大量帖子需要更长时间
             )
             print(result.stdout)
             if result.stderr:
@@ -161,6 +162,7 @@ def summarize_posts():
             print(f"❌ 脚本文件不存在: {script_path}")
     except subprocess.TimeoutExpired:
         print("\n❌ 脚本执行超时")
+        print("💡 提示: 处理大量帖子可能需要更长时间，可以尝试增加超时时间")
     except Exception as e:
         print(f"\n❌ 总结过程中出现错误: {e}")
         print("💡 提示: 请确保gemini_ocr.py工具路径正确且可执行")

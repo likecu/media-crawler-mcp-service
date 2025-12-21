@@ -45,7 +45,8 @@ DEFAULT_CRAWLER_CONFIG = {
 # OCR相关配置
 OCR_CONFIG = {
     "tool_path": "/Volumes/600g/app1/doubao获取/python/gemini_ocr.py",
-    "question": "图里有什么内容？"
+    "question": "图里有什么内容？",
+    "max_threads": 4  # 并行处理的最大线程数
 }
 
 # 不同爬虫的输出目录配置

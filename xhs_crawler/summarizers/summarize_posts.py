@@ -5,24 +5,64 @@
 """
 
 import os
+import sys
 import json
 import time
 import subprocess
 import requests
-from typing import List, Dict, Any
+import signal
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import List, Dict, Any, Tuple
+
+# 添加项目根目录到Python路径
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
+# 导入配置
+from xhs_crawler.core.config import get_output_dir, get_detail_dir, OCR_CONFIG
+# 导入 Neon 数据库模块
+from xhs_crawler.core.database import get_neon_database
+
+# 全局标志，用于优雅退出
+SHUTDOWN_FLAG = False
+
+# 信号处理器，用于处理Ctrl+C中断
+def signal_handler(signum, frame):
+    global SHUTDOWN_FLAG
+    SHUTDOWN_FLAG = True
+    print("\n⏸️  收到中断信号，正在优雅退出...")
+
+# 注册信号处理器
+signal.signal(signal.SIGINT, signal_handler)
+
+# 爬虫类型 - 从配置获取输出目录
+CRAWLER_TYPE = "multi_keyword"  # 可根据实际情况修改为 "simple" 或 "interview"
 
 # 结果保存目录
-OUTPUT_DIR = "大模型面试帖子"
-DETAIL_DIR = os.path.join(OUTPUT_DIR, "详情")
+OUTPUT_DIR = get_output_dir(CRAWLER_TYPE)
+DETAIL_DIR = get_detail_dir(CRAWLER_TYPE)
 SUMMARY_DIR = os.path.join(OUTPUT_DIR, "总结")
-HTML_FILE = os.path.join(OUTPUT_DIR, "大模型面试经验分享_with_summary.html")
+HTML_FILE = os.path.join(OUTPUT_DIR, f"大模型面试经验分享_with_summary.html")
 
 # OCR工具路径
-OCR_TOOL = "/Volumes/600g/app1/doubao获取/python/gemini_ocr.py"
+OCR_TOOL = OCR_CONFIG["tool_path"]
 
 # 图片OCR结果缓存
 OCR_CACHE = {}
 OCR_CACHE_FILE = os.path.join(SUMMARY_DIR, "ocr_cache.json")
+
+# 读取search_config.json配置
+SEARCH_CONFIG = {}
+SEARCH_CONFIG_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "search_config.json")
+
+try:
+    with open(SEARCH_CONFIG_FILE, "r", encoding="utf-8") as f:
+        SEARCH_CONFIG = json.load(f)
+except Exception as e:
+    print(f"⚠️  读取search_config.json失败: {e}")
+    SEARCH_CONFIG = {}
+
+# 从配置获取最大线程数
+MAX_THREADS = SEARCH_CONFIG.get("max_threads", 4)
 
 def ensure_output_dirs():
     """
@@ -141,10 +181,16 @@ def ocr_image(image_path: str, image_url: str = "") -> str:
     print(f"🔍 开始对图片进行OCR识别: {image_path}")
     try:
         # 使用gemini_ocr.py进行图片OCR识别
-        command = f"/Users/aaa/python-sdk/python3.13.2/bin/python {OCR_TOOL} {image_path} --question '图里有什么内容？'"
+        args = [
+            "/Users/aaa/python-sdk/python3.13.2/bin/python",
+            OCR_TOOL,
+            image_path,
+            "--question",
+            "图里有什么内容？"
+        ]
         result = subprocess.run(
-            command, 
-            shell=True, 
+            args, 
+            shell=False,  # 不使用shell解释
             capture_output=True, 
             text=True, 
             encoding="utf-8",
@@ -168,7 +214,7 @@ def ocr_image(image_path: str, image_url: str = "") -> str:
                 return ocr_result
         
         # 如果没有找到标准格式，返回完整输出
-        print(f"⚠️  图片OCR结果格式异常")
+        print(f"⚠️  图片OCR结果格式异常，实际输出: {ocr_output}")
         # 存入缓存
         OCR_CACHE[cache_key] = ocr_output
         return ocr_output
@@ -176,6 +222,32 @@ def ocr_image(image_path: str, image_url: str = "") -> str:
         print(f"❌ 图片OCR识别异常: {type(e).__name__}: {e}")
         return ""
 
+
+def process_single_image(img_tuple: Tuple[int, Dict[str, Any], str]) -> Tuple[int, str]:
+    """
+    处理单张图片：下载并进行OCR识别
+    
+    Args:
+        img_tuple: 包含图片索引、图片信息和临时目录路径的元组
+        
+    Returns:
+        包含图片索引和OCR结果的元组
+    """
+    i, img, temp_dir = img_tuple
+    img_url = img.get("url", "")
+    if not img_url:
+        return (i, "")
+    
+    print(f"📥 正在下载第 {i+1} 张图片: {img_url[:50]}...")
+    
+    # 下载图片
+    img_save_path = os.path.join(temp_dir, f"image_{i+1}.jpg")
+    if download_image(img_url, img_save_path):
+        # 对图片进行OCR识别，传递图片URL用于缓存
+        ocr_result = ocr_image(img_save_path, img_url)
+        return (i, ocr_result)
+    
+    return (i, "")
 
 def summarize_content(content: str, title: str, images: List[Dict[str, Any]] = None) -> str:
     """
@@ -202,35 +274,52 @@ def summarize_content(content: str, title: str, images: List[Dict[str, Any]] = N
             temp_dir = f"/tmp/xhs_post_images/{title[:20].replace(' ', '_')}"
             os.makedirs(temp_dir, exist_ok=True)
             
-            for i, img in enumerate(images):
-                img_url = img.get("url", "")
-                if not img_url:
-                    continue
+            # 准备图片处理任务
+            img_tasks = [(i, img, temp_dir) for i, img in enumerate(images)]
+            
+            # 从配置获取最大线程数
+            max_threads = MAX_THREADS
+            print(f"🔧 使用 {max_threads} 个线程并行处理图片")
+            
+            # 使用线程池并行处理图片
+            ocr_results = ["" for _ in range(len(images))]  # 保存OCR结果，保持顺序
+            
+            with ThreadPoolExecutor(max_workers=max_threads) as executor:
+                # 提交所有任务
+                future_to_img = {executor.submit(process_single_image, img_task): img_task for img_task in img_tasks}
                 
-                print(f"📥 正在下载第 {i+1}/{len(images)} 张图片: {img_url[:50]}...")
-                
-                # 下载图片
-                img_save_path = os.path.join(temp_dir, f"image_{i+1}.jpg")
-                if download_image(img_url, img_save_path):
-                    # 对图片进行OCR识别，传递图片URL用于缓存
-                    ocr_result = ocr_image(img_save_path, img_url)
-                    if ocr_result:
-                        full_content += f"\n\n--- 图片 {i+1} OCR结果 ---\n{ocr_result}"
-                
-                # 避免请求过快
-                time.sleep(1)
+                # 获取任务结果
+                for future in as_completed(future_to_img):
+                    try:
+                        i, ocr_result = future.result()
+                        if ocr_result:
+                            ocr_results[i] = ocr_result
+                    except Exception as e:
+                        print(f"❌ 处理图片时发生异常: {e}")
+            
+            # 将OCR结果添加到完整内容
+            for i, ocr_result in enumerate(ocr_results):
+                if ocr_result:
+                    full_content += f"\n\n--- 图片 {i+1} OCR结果 ---\n{ocr_result}"
         
         print(f"📝 完整内容长度: {len(full_content)} 字符")
         
         # 直接调用gemini_ocr.py进行总结，传递问题和完整内容
         print(f"🔧 调用gemini_ocr.py工具进行总结...")
         question = f'请总结这篇大模型面试经验分享的主要内容，提取关键面试经验、技巧和建议\n\n{full_content}'
-        command = f"/Users/aaa/python-sdk/python3.13.2/bin/python {OCR_TOOL} --question \"{question}\""
-        print(f"💻 执行命令: {command[:100]}...")
+        
+        # 使用args参数列表形式，避免shell解释特殊字符
+        args = [
+            "/Users/aaa/python-sdk/python3.13.2/bin/python",
+            OCR_TOOL,
+            "--question",
+            question
+        ]
+        print(f"💻 执行命令: {' '.join(args[:4])} ...")
         
         result = subprocess.run(
-            command, 
-            shell=True, 
+            args, 
+            shell=False,  # 不使用shell解释
             capture_output=True, 
             text=True, 
             encoding="utf-8",
@@ -256,7 +345,7 @@ def summarize_content(content: str, title: str, images: List[Dict[str, Any]] = N
         print(f"⚠️  未找到标准回答格式，返回完整输出")
         return summary_output
     except subprocess.TimeoutExpired:
-        print(f"⏱️ 总结超时，超过120秒")
+        print(f"⏱️ 总结超时，超过180秒")
         return ""
     except Exception as e:
         print(f"❌ 总结异常: {type(e).__name__}: {e}")
@@ -278,12 +367,19 @@ def is_llm_interview_question(summary: str) -> bool:
     try:
         # 使用对话工具提问
         question = f'请判断以下内容是否是大模型相关的面试题目，只需要回答"是"或"否"\n\n{summary}'
-        command = f"/Users/aaa/python-sdk/python3.13.2/bin/python {OCR_TOOL} --question \"{question}\""
-        print(f"💻 执行命令: {command[:100]}...")
+        
+        # 使用args参数列表形式，避免shell解释特殊字符
+        args = [
+            "/Users/aaa/python-sdk/python3.13.2/bin/python",
+            OCR_TOOL,
+            "--question",
+            question
+        ]
+        print(f"💻 执行命令: {' '.join(args[:4])} ...")
         
         result = subprocess.run(
-            command, 
-            shell=True, 
+            args, 
+            shell=False,  # 不使用shell解释
             capture_output=True, 
             text=True, 
             encoding="utf-8",
@@ -333,6 +429,13 @@ def save_summary(title: str, summary: str):
             f.write(summary)
         print(f"✅ 总结已成功保存: {summary_file}")
         print(f"📊 总结长度: {len(summary)} 字符")
+        
+        # 上传到 Neon 数据库
+        print("📤 正在将总结文件上传到 Neon 数据库...")
+        db = get_neon_database()
+        if db:
+            db.upload_file(summary_file)
+            db.close()
     except Exception as e:
         print(f"❌ 保存总结失败: {e}")
         raise
@@ -483,9 +586,51 @@ def generate_html_with_summary(posts: List[Dict[str, Any]], summaries: Dict[str,
             f.write(html_content)
         print(f"✅ HTML网页已成功生成: {HTML_FILE}")
         print(f"📊 共生成 {processed_count} 篇帖子，其中 {summary_count} 篇包含总结")
+        
+        # 上传到 Neon 数据库
+        print("📤 正在将HTML文件上传到 Neon 数据库...")
+        db = get_neon_database()
+        if db:
+            db.upload_file(HTML_FILE)
+            db.close()
     except Exception as e:
         print(f"❌ 保存HTML文件失败: {e}")
         raise
+
+def load_existing_summaries() -> Dict[str, str]:
+    """
+    从总结目录加载已有的总结文件
+    
+    Returns:
+        帖子标题到总结内容的映射字典
+    """
+    print(f"📂 开始加载已有的总结文件，目录: {SUMMARY_DIR}")
+    summaries = {}
+    
+    if not os.path.exists(SUMMARY_DIR):
+        print(f"❌ 总结目录不存在: {SUMMARY_DIR}")
+        return summaries
+    
+    # 获取所有总结文件
+    summary_files = [f for f in os.listdir(SUMMARY_DIR) if f.endswith("_summary.txt")]
+    print(f"📁 发现 {len(summary_files)} 个总结文件")
+    
+    # 遍历总结文件
+    for filename in summary_files:
+        file_path = os.path.join(SUMMARY_DIR, filename)
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                summary = f.read()
+            
+            # 从文件名提取标题（移除 "_summary.txt" 后缀）
+            title = filename.replace("_summary.txt", "")
+            summaries[title] = summary
+            print(f"✅ 加载总结: {title[:30]}...")
+        except Exception as e:
+            print(f"❌ 读取总结文件失败: {filename}, {e}")
+    
+    print(f"📊 成功加载 {len(summaries)} 个总结文件")
+    return summaries
 
 def main():
     """
@@ -505,19 +650,27 @@ def main():
     
     print(f"✅ 加载了 {len(posts)} 篇帖子详情")
     
-    # 2. 对每个帖子进行总结和判断
+    # 2. 加载已有的总结文件
+    summaries = load_existing_summaries()
+    
+    # 3. 对未总结的帖子进行总结和判断
     valid_posts = []  # 保存符合条件的帖子
-    summaries = {}
     print(f"📝 开始对帖子进行总结")
     
     for i, post_item in enumerate(posts):
-        print(f"🔧 正在处理第 {i+1}/{len(posts)} 篇帖子")
         post = post_item.get("data", {})
         basic_info = post.get("basic_info", {})
+        title = basic_info.get("title", "无标题")
+        
+        # 如果已经有总结，直接跳过
+        if title in summaries:
+            print(f"✅ 帖子 '{title[:30]}...' 已存在总结，跳过")
+            valid_posts.append(post_item)  # 添加到有效帖子列表
+            continue
+        
+        print(f"🔧 正在处理第 {i+1}/{len(posts)} 篇帖子")
         detail = post.get("detail", {})
         filename = post_item.get("filename", "")
-        
-        title = basic_info.get("title", "无标题")
         
         # 提取内容和图片
         content = ""
@@ -590,12 +743,12 @@ def main():
     
     print(f"✅ 已总结 {len(summaries)} 篇符合条件的帖子")
     
-    # 3. 生成包含总结的HTML网页
-    if valid_posts:
+    # 4. 生成包含总结的HTML网页
+    if valid_posts and summaries:
         print(f"📝 开始生成包含总结的HTML网页")
         generate_html_with_summary(valid_posts, summaries)
     else:
-        print(f"⚠️  没有符合条件的帖子，跳过HTML生成")
+        print(f"⚠️  没有符合条件的帖子或总结，跳过HTML生成")
     
     # 保存OCR缓存
     save_ocr_cache()
@@ -603,7 +756,7 @@ def main():
     end_time = time.time()
     print(f"🎉 帖子总结完成！耗时: {end_time - start_time:.2f} 秒")
     print(f"📁 总结保存目录: {os.path.abspath(SUMMARY_DIR)}")
-    if valid_posts:
+    if valid_posts and summaries:
         print(f"🌐 包含总结的HTML网页: {os.path.abspath(HTML_FILE)}")
     print(f"📊 共处理 {len(posts)} 篇帖子，其中 {len(valid_posts)} 篇符合大模型相关面试题条件")
 
