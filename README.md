@@ -38,7 +38,7 @@
 │       └── summarize_posts.py       # 帖子总结
 ├── .gitignore               # Git忽略文件
 ├── README.md                # 项目说明文档
-├── get_hotel_reviews        # 酒店评论获取脚本
+
 ├── start_mcp_service.sh     # 启动MCP服务脚本
 ├── stop_mcp_service.sh      # 停止MCP服务脚本
 └── 小红书登录指南.md          # 小红书登录指南
