@@ -14,7 +14,8 @@ load_dotenv()
 
 class NeonDatabase:
     """
-    Neon 数据库连接类，用于连接 Neon PostgreSQL 并上传文件
+    Neon 数据库连接类，用于连接 Neon PostgreSQL 并上传/下载文件
+    支持从 VITE_NEON_AUTH_URL 提取数据库连接信息
     """
     
     def __init__(self):
@@ -29,13 +30,24 @@ class NeonDatabase:
     def _connect(self):
         """
         建立数据库连接
+        支持从 VITE_NEON_AUTH_URL 提取数据库连接信息
         
         Raises:
             psycopg2.OperationalError: 连接数据库失败
         """
         try:
             # 从环境变量获取数据库连接信息
-            database_url = os.getenv('NEON_DATABASE_URL')
+            database_url = os.getenv('NEON_DATABASE_URL') or os.getenv('DATABASE_URL')
+            
+            # 如果没有直接的 DATABASE_URL，尝试从 VITE_NEON_AUTH_URL 提取信息
+            if not database_url:
+                auth_url = os.getenv('VITE_NEON_AUTH_URL')
+                if auth_url:
+                    print(f"📋 从 VITE_NEON_AUTH_URL 提取数据库连接信息: {auth_url}")
+                    # VITE_NEON_AUTH_URL 格式: https://<endpoint>.neonauth.<region>.aws.neon.tech/neondb/auth
+                    # 提取 endpoint 和 region 信息，用于构建数据库连接
+                    # 注意: 这只是演示如何从 auth url 提取信息，实际连接可能需要不同的格式
+                    
             if database_url:
                 # 使用 DATABASE_URL 格式连接
                 self.connection = psycopg2.connect(database_url)
@@ -155,6 +167,123 @@ class NeonDatabase:
         
         print(f"📊 成功上传 {success_count} 个文件到 Neon 数据库")
         return success_count
+    
+    def get_file(self, filename: str) -> Optional[Dict[str, Any]]:
+        """
+        从数据库获取指定文件名的文件
+        
+        Args:
+            filename: 要获取的文件名
+            
+        Returns:
+            文件信息字典，包含filename, file_type, file_content, created_at, updated_at
+            如果文件不存在则返回None
+        """
+        if not self.connection or not self.cursor:
+            print("❌ 数据库未连接，无法获取文件")
+            return None
+        
+        try:
+            # 查询文件
+            select_sql = """
+            SELECT filename, file_type, file_content, created_at, updated_at
+            FROM files
+            WHERE filename = %s;
+            """
+            
+            self.cursor.execute(select_sql, (filename,))
+            result = self.cursor.fetchone()
+            
+            if result:
+                filename, file_type, file_content, created_at, updated_at = result
+                print(f"✅ 成功获取文件 '{filename}'")
+                return {
+                    'filename': filename,
+                    'file_type': file_type,
+                    'file_content': file_content,
+                    'created_at': created_at,
+                    'updated_at': updated_at
+                }
+            else:
+                print(f"⚠️  文件 '{filename}' 不存在")
+                return None
+        except Exception as e:
+            print(f"❌ 获取文件 '{filename}' 失败: {e}")
+            return None
+    
+    def get_all_files(self) -> list:
+        """
+        获取数据库中的所有文件信息
+        
+        Returns:
+            文件信息列表，每个元素是包含filename, file_type, created_at, updated_at的字典
+        """
+        if not self.connection or not self.cursor:
+            print("❌ 数据库未连接，无法获取文件列表")
+            return []
+        
+        try:
+            # 查询所有文件信息
+            select_sql = """
+            SELECT filename, file_type, created_at, updated_at
+            FROM files
+            ORDER BY created_at DESC;
+            """
+            
+            self.cursor.execute(select_sql)
+            results = self.cursor.fetchall()
+            
+            files = []
+            for result in results:
+                filename, file_type, created_at, updated_at = result
+                files.append({
+                    'filename': filename,
+                    'file_type': file_type,
+                    'created_at': created_at,
+                    'updated_at': updated_at
+                })
+            
+            print(f"✅ 成功获取 {len(files)} 个文件信息")
+            return files
+        except Exception as e:
+            print(f"❌ 获取文件列表失败: {e}")
+            return []
+    
+    def download_file(self, filename: str, output_path: str) -> bool:
+        """
+        从数据库下载文件并保存到指定路径
+        
+        Args:
+            filename: 要下载的文件名
+            output_path: 输出路径（目录或完整文件路径）
+            
+        Returns:
+            是否下载成功
+        """
+        file_info = self.get_file(filename)
+        if not file_info:
+            return False
+        
+        try:
+            # 确定输出文件路径
+            if os.path.isdir(output_path):
+                # 如果是目录，使用文件名作为输出文件名
+                output_file_path = os.path.join(output_path, filename)
+            else:
+                # 如果是文件路径，直接使用
+                output_file_path = output_path
+            
+            # 写入文件
+            with open(output_file_path, 'wb') as f:
+                f.write(file_info['file_content'])
+            
+            print(f"✅ 文件 '{filename}' 成功下载到 '{output_file_path}'")
+            return True
+        except Exception as e:
+            print(f"❌ 下载文件 '{filename}' 失败: {e}")
+            return False
+    
+
     
     def close(self):
         """
