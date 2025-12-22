@@ -124,11 +124,14 @@ def test_file_upload_download():
         # 创建示例HTML文件
         sample_file = create_sample_html_file()
         
-        # 测试文件上传
-        print(f"\n📤 上传文件: {sample_file}")
-        upload_success = db.upload_file(sample_file)
+        # 测试内容直接上传
+        print(f"\n📤 直接上传HTML内容...")
+        # 读取文件内容
+        with open(sample_file, 'r', encoding='utf-8') as f:
+            sample_content = f.read()
+        upload_success = db.upload_content("sample_test.html", sample_content, "html", "test_hashid")
         if not upload_success:
-            print("❌ 文件上传失败")
+            print("❌ 内容上传失败")
             return False
         
         # 测试获取文件列表

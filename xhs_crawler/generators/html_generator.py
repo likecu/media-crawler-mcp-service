@@ -4,6 +4,7 @@
 HTML网页生成工具
 """
 
+import os
 import time
 from typing import List, Dict, Any
 
@@ -81,14 +82,15 @@ def generate_post_html(post: Dict[str, Any], index: int) -> str:
     return post_html
 
 
-def generate_html(posts: List[Dict[str, Any]], html_file: str, title: str = "大模型面试经验分享") -> bool:
+def generate_html(posts: List[Dict[str, Any]], html_file: str, title: str = "大模型面试经验分享", hashid: str = None) -> bool:
     """
-    生成完整的HTML网页
+    生成完整的HTML网页并上传到Neon数据库
     
     Args:
         posts: 帖子列表
-        html_file: HTML文件路径
+        html_file: HTML文件名（仅用于数据库存储，不再保存本地文件）
         title: 网页标题
+        hashid: 文件对应的hashid
         
     Returns:
         是否生成成功
@@ -133,19 +135,20 @@ def generate_html(posts: List[Dict[str, Any]], html_file: str, title: str = "大
     """
     
     try:
-        with open(html_file, 'w', encoding='utf-8') as f:
-            f.write(html_content)
-        print(f"✅ HTML网页已生成: {html_file}")
+        # 直接上传到 Neon 数据库，不再保存本地文件
         print(f"📊 共生成 {len(posts)} 篇帖子")
+        print("📤 正在将HTML内容直接上传到 Neon 数据库...")
         
-        # 上传到 Neon 数据库
-        print("📤 正在将HTML文件上传到 Neon 数据库...")
         db = get_neon_database()
         if db:
-            db.upload_file(html_file)
+            # 使用basename作为文件名，确保只存储文件名而不是完整路径
+            filename = html_file if not os.path.isabs(html_file) else os.path.basename(html_file)
+            # 上传内容到数据库
+            success = db.upload_content(filename, html_content, "html", hashid)
             db.close()
+            return success
         
-        return True
+        return False
     except Exception as e:
         print(f"❌ 生成HTML失败: {e}")
         return False

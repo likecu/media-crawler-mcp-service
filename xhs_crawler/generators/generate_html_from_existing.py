@@ -92,11 +92,14 @@ class ExistingHtmlGenerator:
             }
             posts.append(post)
         
-        # 3. 生成HTML网页
-        generate_html(posts, self.html_file, "大模型面试经验分享")
+        # 3. 生成HTML网页并上传到数据库
+        # 生成hashid，使用时间戳和爬虫类型组合
+        hashid = f"{self.crawler_type}_{int(time.time())}"
+        generate_html(posts, self.html_file, "大模型面试经验分享", hashid)
         
         print(f"🎉 HTML生成完成！")
-        print(f"🌐 HTML网页: {os.path.abspath(self.html_file)}")
+        print(f"📤 HTML内容已上传到Neon数据库")
+        print(f"🔗 对应的hashid: {hashid}")
 
 
 def main():

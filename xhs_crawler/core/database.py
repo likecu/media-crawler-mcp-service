@@ -82,9 +82,11 @@ class NeonDatabase:
                 filename VARCHAR(255) NOT NULL,
                 file_type VARCHAR(50) NOT NULL,
                 file_content BYTEA NOT NULL,
+                hashid VARCHAR(255) NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE(filename)
+                UNIQUE(filename),
+                UNIQUE(hashid)
             );
             """
             self.cursor.execute(create_table_sql)
@@ -93,13 +95,32 @@ class NeonDatabase:
         except Exception as e:
             print(f"❌ 创建文件表失败: {e}")
             self.connection.rollback()
+            
+            # 尝试更新表结构，添加缺少的hashid字段
+            try:
+                print("🔧 尝试更新表结构，添加hashid字段...")
+                # 检查hashid字段是否存在
+                self.cursor.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'files' AND column_name = 'hashid'")
+                if not self.cursor.fetchone():
+                    # 添加hashid字段
+                    self.cursor.execute("ALTER TABLE files ADD COLUMN hashid VARCHAR(255) NOT NULL DEFAULT 'default_hashid'")
+                    # 添加唯一约束
+                    self.cursor.execute("ALTER TABLE files ADD CONSTRAINT files_hashid_key UNIQUE (hashid)")
+                    self.connection.commit()
+                    print("✅ 成功添加hashid字段和唯一约束")
+                else:
+                    print("✅ hashid字段已存在")
+            except Exception as alter_e:
+                print(f"❌ 更新表结构失败: {alter_e}")
+                self.connection.rollback()
     
-    def upload_file(self, file_path: str) -> bool:
+    def upload_file(self, file_path: str, hashid: str = None) -> bool:
         """
         上传文件到数据库
         
         Args:
             file_path: 文件路径
+            hashid: 文件对应的hashid
             
         Returns:
             是否上传成功
@@ -117,17 +138,22 @@ class NeonDatabase:
             with open(file_path, 'rb') as f:
                 file_content = f.read()
             
+            # 如果没有提供hashid，使用文件名作为默认hashid
+            if not hashid:
+                hashid = filename
+            
             # 插入或更新文件
             upsert_sql = """
-            INSERT INTO files (filename, file_type, file_content, updated_at)
-            VALUES (%s, %s, %s, CURRENT_TIMESTAMP)
+            INSERT INTO files (filename, file_type, file_content, hashid, updated_at)
+            VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP)
             ON CONFLICT (filename) DO UPDATE
             SET file_content = EXCLUDED.file_content,
                 file_type = EXCLUDED.file_type,
+                hashid = EXCLUDED.hashid,
                 updated_at = CURRENT_TIMESTAMP;
             """
             
-            self.cursor.execute(upsert_sql, (filename, file_type, file_content))
+            self.cursor.execute(upsert_sql, (filename, file_type, file_content, hashid))
             self.connection.commit()
             print(f"✅ 文件 '{filename}' 成功上传到 Neon 数据库")
             return True
@@ -136,13 +162,59 @@ class NeonDatabase:
             self.connection.rollback()
             return False
     
-    def upload_files_in_directory(self, directory_path: str, extensions: list = None) -> int:
+    def upload_content(self, filename: str, content: str, file_type: str = "html", hashid: str = None) -> bool:
+        """
+        直接上传内容到数据库，无需先保存到文件
+        
+        Args:
+            filename: 文件名
+            content: 文件内容
+            file_type: 文件类型
+            hashid: 文件对应的hashid
+            
+        Returns:
+            是否上传成功
+        """
+        if not self.connection or not self.cursor:
+            print("❌ 数据库未连接，无法上传内容")
+            return False
+        
+        try:
+            # 如果没有提供hashid，使用文件名作为默认hashid
+            if not hashid:
+                hashid = filename
+            
+            # 将内容转换为字节
+            file_content = content.encode('utf-8')
+            
+            # 插入或更新文件
+            upsert_sql = """
+            INSERT INTO files (filename, file_type, file_content, hashid, updated_at)
+            VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP)
+            ON CONFLICT (filename) DO UPDATE
+            SET file_content = EXCLUDED.file_content,
+                file_type = EXCLUDED.file_type,
+                hashid = EXCLUDED.hashid,
+                updated_at = CURRENT_TIMESTAMP;
+            """
+            
+            self.cursor.execute(upsert_sql, (filename, file_type, file_content, hashid))
+            self.connection.commit()
+            print(f"✅ 内容 '{filename}' 成功上传到 Neon 数据库")
+            return True
+        except Exception as e:
+            print(f"❌ 上传内容 '{filename}' 失败: {e}")
+            self.connection.rollback()
+            return False
+    
+    def upload_files_in_directory(self, directory_path: str, extensions: list = None, hashid_prefix: str = None) -> int:
         """
         上传目录中的所有指定扩展名的文件到数据库
         
         Args:
             directory_path: 目录路径
             extensions: 允许的文件扩展名列表，如 ["txt", "html"]
+            hashid_prefix: hashid前缀，用于生成文件对应的hashid
             
         Returns:
             成功上传的文件数量
@@ -162,7 +234,9 @@ class NeonDatabase:
                     continue
                 
                 file_path = os.path.join(root, file)
-                if self.upload_file(file_path):
+                # 生成hashid
+                hashid = f"{hashid_prefix}_{file}" if hashid_prefix else file
+                if self.upload_file(file_path, hashid):
                     success_count += 1
         
         print(f"📊 成功上传 {success_count} 个文件到 Neon 数据库")
@@ -176,7 +250,7 @@ class NeonDatabase:
             filename: 要获取的文件名
             
         Returns:
-            文件信息字典，包含filename, file_type, file_content, created_at, updated_at
+            文件信息字典，包含filename, file_type, file_content, hashid, created_at, updated_at
             如果文件不存在则返回None
         """
         if not self.connection or not self.cursor:
@@ -186,7 +260,7 @@ class NeonDatabase:
         try:
             # 查询文件
             select_sql = """
-            SELECT filename, file_type, file_content, created_at, updated_at
+            SELECT filename, file_type, file_content, hashid, created_at, updated_at
             FROM files
             WHERE filename = %s;
             """
@@ -195,12 +269,13 @@ class NeonDatabase:
             result = self.cursor.fetchone()
             
             if result:
-                filename, file_type, file_content, created_at, updated_at = result
+                filename, file_type, file_content, hashid, created_at, updated_at = result
                 print(f"✅ 成功获取文件 '{filename}'")
                 return {
                     'filename': filename,
                     'file_type': file_type,
                     'file_content': file_content,
+                    'hashid': hashid,
                     'created_at': created_at,
                     'updated_at': updated_at
                 }
@@ -211,12 +286,56 @@ class NeonDatabase:
             print(f"❌ 获取文件 '{filename}' 失败: {e}")
             return None
     
+    def get_file_by_hashid(self, hashid: str) -> Optional[Dict[str, Any]]:
+        """
+        从数据库获取指定hashid的文件
+        
+        Args:
+            hashid: 要获取的文件的hashid
+            
+        Returns:
+            文件信息字典，包含filename, file_type, file_content, hashid, created_at, updated_at
+            如果文件不存在则返回None
+        """
+        if not self.connection or not self.cursor:
+            print("❌ 数据库未连接，无法获取文件")
+            return None
+        
+        try:
+            # 查询文件
+            select_sql = """
+            SELECT filename, file_type, file_content, hashid, created_at, updated_at
+            FROM files
+            WHERE hashid = %s;
+            """
+            
+            self.cursor.execute(select_sql, (hashid,))
+            result = self.cursor.fetchone()
+            
+            if result:
+                filename, file_type, file_content, hashid, created_at, updated_at = result
+                print(f"✅ 成功获取hashid为 '{hashid}' 的文件")
+                return {
+                    'filename': filename,
+                    'file_type': file_type,
+                    'file_content': file_content,
+                    'hashid': hashid,
+                    'created_at': created_at,
+                    'updated_at': updated_at
+                }
+            else:
+                print(f"⚠️  hashid为 '{hashid}' 的文件不存在")
+                return None
+        except Exception as e:
+            print(f"❌ 获取hashid为 '{hashid}' 的文件失败: {e}")
+            return None
+    
     def get_all_files(self) -> list:
         """
         获取数据库中的所有文件信息
         
         Returns:
-            文件信息列表，每个元素是包含filename, file_type, created_at, updated_at的字典
+            文件信息列表，每个元素是包含filename, file_type, hashid, created_at, updated_at的字典
         """
         if not self.connection or not self.cursor:
             print("❌ 数据库未连接，无法获取文件列表")
@@ -225,7 +344,7 @@ class NeonDatabase:
         try:
             # 查询所有文件信息
             select_sql = """
-            SELECT filename, file_type, created_at, updated_at
+            SELECT filename, file_type, hashid, created_at, updated_at
             FROM files
             ORDER BY created_at DESC;
             """
@@ -235,10 +354,11 @@ class NeonDatabase:
             
             files = []
             for result in results:
-                filename, file_type, created_at, updated_at = result
+                filename, file_type, hashid, created_at, updated_at = result
                 files.append({
                     'filename': filename,
                     'file_type': file_type,
+                    'hashid': hashid,
                     'created_at': created_at,
                     'updated_at': updated_at
                 })
