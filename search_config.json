@@ -1,18 +1,18 @@
 {
   "search_terms": [
-    "大模型面试 经验分享",
-    "大模型面试技巧",
-    "leetcode 刷题",
-    "算法刷题",
-    "刷题路线",
-    "刷题顺序",
-    "面试经验",
-    "面试题",
-    "算法面试",
-    "LLM面试",
-    "更新",
-    "2025"
+    "leetcode 刷题 经验",
+    "leetcode 刷题 路线",
+    "leetcode 刷题 顺序",
+    "算法刷题 经验",
+    "算法刷题 顺序",
+    "刷题技巧",
+    "刷题方法",
+    "leetcode 入门",
+    "leetcode 题目推荐",
+    "刷题计划"
   ],
   "page_num": 2,
-  "page_size": 20
+  "page_size": 20,
+  "crawler_type": "leetcode",
+  "enable_db_storage": true
 }

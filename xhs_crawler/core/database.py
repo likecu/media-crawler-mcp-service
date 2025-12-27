@@ -96,15 +96,11 @@ class NeonDatabase:
             print(f"❌ 创建文件表失败: {e}")
             self.connection.rollback()
             
-            # 尝试更新表结构，添加缺少的hashid字段
             try:
                 print("🔧 尝试更新表结构，添加hashid字段...")
-                # 检查hashid字段是否存在
                 self.cursor.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'files' AND column_name = 'hashid'")
                 if not self.cursor.fetchone():
-                    # 添加hashid字段
                     self.cursor.execute("ALTER TABLE files ADD COLUMN hashid VARCHAR(255) NOT NULL DEFAULT 'default_hashid'")
-                    # 添加唯一约束
                     self.cursor.execute("ALTER TABLE files ADD CONSTRAINT files_hashid_key UNIQUE (hashid)")
                     self.connection.commit()
                     print("✅ 成功添加hashid字段和唯一约束")
@@ -113,35 +109,116 @@ class NeonDatabase:
             except Exception as alter_e:
                 print(f"❌ 更新表结构失败: {alter_e}")
                 self.connection.rollback()
+        
+        self._create_practice_table()
+        self._create_question_table()
+        self._create_leetcode_table()
+    
+    def _create_leetcode_table(self):
+        """
+        创建LeetCode刷题记录表（如果不存在）
+        """
+        try:
+            create_table_sql = """
+            CREATE TABLE IF NOT EXISTS leetcode_practice (
+                id SERIAL PRIMARY KEY,
+                problem_id INTEGER NOT NULL,
+                problem_name VARCHAR(500) NOT NULL,
+                problem_url VARCHAR(1000),
+                difficulty VARCHAR(20),
+                status VARCHAR(20) DEFAULT 'pending',
+                notes TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(problem_id)
+            );
+            """
+            self.cursor.execute(create_table_sql)
+            self.connection.commit()
+            print("✅ LeetCode刷题记录表创建成功或已存在")
+        except Exception as e:
+            print(f"❌ 创建LeetCode刷题记录表失败: {e}")
+            self.connection.rollback()
+    
+    def _create_practice_table(self):
+        """
+        创建刷题记录表（如果不存在）
+        """
+        try:
+            create_table_sql = """
+            CREATE TABLE IF NOT EXISTS practice_records (
+                id SERIAL PRIMARY KEY,
+                keyword VARCHAR(200) NOT NULL,
+                platform VARCHAR(50),
+                note_count INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            """
+            self.cursor.execute(create_table_sql)
+            self.connection.commit()
+            print("✅ 刷题记录表创建成功或已存在")
+        except Exception as e:
+            print(f"❌ 创建刷题记录表失败: {e}")
+            self.connection.rollback()
+    
+    def _create_question_table(self):
+        """
+        创建面试题库表（如果不存在）
+        """
+        try:
+            create_table_sql = """
+            CREATE TABLE IF NOT EXISTS interview_questions (
+                id SERIAL PRIMARY KEY,
+                question_id VARCHAR(50) NOT NULL UNIQUE,
+                content TEXT NOT NULL,
+                answer TEXT,
+                category VARCHAR(100),
+                difficulty VARCHAR(20),
+                question_type VARCHAR(50),
+                explanation TEXT,
+                source VARCHAR(500),
+                source_url VARCHAR(1000),
+                note_id VARCHAR(100),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            """
+            self.cursor.execute(create_table_sql)
+            self.connection.commit()
+            print("✅ 面试题库表创建成功或已存在")
+        except Exception as e:
+            print(f"❌ 创建面试题库表失败: {e}")
+            self.connection.rollback()
     
     def upload_file(self, file_path: str, hashid: str = None) -> bool:
         """
         上传文件到数据库
-        
+
         Args:
             file_path: 文件路径
             hashid: 文件对应的hashid
-            
+
         Returns:
             是否上传成功
         """
         if not self.connection or not self.cursor:
             print("❌ 数据库未连接，无法上传文件")
             return False
-        
+
         try:
             # 获取文件名和文件类型
             filename = os.path.basename(file_path)
             file_type = os.path.splitext(filename)[1][1:].lower()  # 去除点号
-            
+
             # 读取文件内容
             with open(file_path, 'rb') as f:
                 file_content = f.read()
-            
+
             # 如果没有提供hashid，使用文件名作为默认hashid
             if not hashid:
                 hashid = filename
-            
+
             # 插入或更新文件
             upsert_sql = """
             INSERT INTO files (filename, file_type, file_content, hashid, updated_at)
@@ -152,7 +229,7 @@ class NeonDatabase:
                 hashid = EXCLUDED.hashid,
                 updated_at = CURRENT_TIMESTAMP;
             """
-            
+
             self.cursor.execute(upsert_sql, (filename, file_type, file_content, hashid))
             self.connection.commit()
             print(f"✅ 文件 '{filename}' 成功上传到 Neon 数据库")
@@ -402,6 +479,287 @@ class NeonDatabase:
         except Exception as e:
             print(f"❌ 下载文件 '{filename}' 失败: {e}")
             return False
+    
+    def save_practice_record(self, keyword: str, platform: str = "小红书", note_count: int = 0) -> bool:
+        """
+        保存刷题记录
+        
+        Args:
+            keyword: 搜索关键词
+            platform: 平台名称
+            note_count: 获取的笔记数量
+            
+        Returns:
+            是否保存成功
+        """
+        if not self.connection or not self.cursor:
+            print("❌ 数据库未连接，无法保存刷题记录")
+            return False
+        
+        try:
+            upsert_sql = """
+            INSERT INTO practice_records (keyword, platform, note_count, updated_at)
+            VALUES (%s, %s, %s, CURRENT_TIMESTAMP)
+            ON CONFLICT (keyword) DO UPDATE
+            SET note_count = EXCLUDED.note_count,
+                platform = EXCLUDED.platform,
+                updated_at = CURRENT_TIMESTAMP;
+            """
+            self.cursor.execute(upsert_sql, (keyword, platform, note_count))
+            self.connection.commit()
+            print(f"✅ 刷题记录 '{keyword}' 已保存到数据库")
+            return True
+        except Exception as e:
+            print(f"❌ 保存刷题记录 '{keyword}' 失败: {e}")
+            self.connection.rollback()
+            return False
+    
+    def save_interview_question(self, question_data: Dict[str, Any]) -> bool:
+        """
+        保存面试题目到数据库
+        
+        Args:
+            question_data: 题目数据字典，包含question_id, content, answer, category等字段
+            
+        Returns:
+            是否保存成功
+        """
+        if not self.connection or not self.cursor:
+            print("❌ 数据库未连接，无法保存面试题目")
+            return False
+        
+        try:
+            upsert_sql = """
+            INSERT INTO interview_questions (
+                question_id, content, answer, category, difficulty, 
+                question_type, explanation, source, source_url, note_id, updated_at
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+            ON CONFLICT (question_id) DO UPDATE
+            SET content = EXCLUDED.content,
+                answer = EXCLUDED.answer,
+                category = EXCLUDED.category,
+                difficulty = EXCLUDED.difficulty,
+                question_type = EXCLUDED.question_type,
+                explanation = EXCLUDED.explanation,
+                source = EXCLUDED.source,
+                source_url = EXCLUDED.source_url,
+                note_id = EXCLUDED.note_id,
+                updated_at = CURRENT_TIMESTAMP;
+            """
+            
+            self.cursor.execute(upsert_sql, (
+                question_data.get('question_id'),
+                question_data.get('content'),
+                question_data.get('answer'),
+                question_data.get('category'),
+                question_data.get('difficulty'),
+                question_data.get('question_type'),
+                question_data.get('explanation'),
+                question_data.get('source'),
+                question_data.get('source_url'),
+                question_data.get('note_id')
+            ))
+            self.connection.commit()
+            print(f"✅ 面试题 '{question_data.get('question_id')}' 已保存到数据库")
+            return True
+        except Exception as e:
+            print(f"❌ 保存面试题 '{question_data.get('question_id')}' 失败: {e}")
+            self.connection.rollback()
+            return False
+    
+    def save_leetcode_problem(self, problem_id: int, problem_name: str, problem_url: str = None, 
+                              difficulty: str = None, status: str = "pending", notes: str = None) -> bool:
+        """
+        保存LeetCode题目到刷题记录
+        
+        Args:
+            problem_id: 题目编号
+            problem_name: 题目名称
+            problem_url: 题目链接
+            difficulty: 难度
+            status: 状态
+            notes: 备注
+            
+        Returns:
+            是否保存成功
+        """
+        if not self.connection or not self.cursor:
+            print("❌ 数据库未连接，无法保存LeetCode题目")
+            return False
+        
+        try:
+            upsert_sql = """
+            INSERT INTO leetcode_practice (problem_id, problem_name, problem_url, difficulty, status, notes, updated_at)
+            VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+            ON CONFLICT (problem_id) DO UPDATE
+            SET problem_name = EXCLUDED.problem_name,
+                problem_url = EXCLUDED.problem_url,
+                difficulty = EXCLUDED.difficulty,
+                status = EXCLUDED.status,
+                notes = EXCLUDED.notes,
+                updated_at = CURRENT_TIMESTAMP;
+            """
+            self.cursor.execute(upsert_sql, (problem_id, problem_name, problem_url, difficulty, status, notes))
+            self.connection.commit()
+            print(f"✅ LeetCode题目 #{problem_id} {problem_name} 已保存到数据库")
+            return True
+        except Exception as e:
+            print(f"❌ 保存LeetCode题目 #{problem_id} 失败: {e}")
+            self.connection.rollback()
+            return False
+    
+    def get_practice_records(self) -> list:
+        """
+        获取所有刷题记录
+        
+        Returns:
+            刷题记录列表
+        """
+        if not self.connection or not self.cursor:
+            print("❌ 数据库未连接，无法获取刷题记录")
+            return []
+        
+        try:
+            select_sql = """
+            SELECT id, keyword, platform, note_count, created_at, updated_at
+            FROM practice_records
+            ORDER BY updated_at DESC;
+            """
+            self.cursor.execute(select_sql)
+            results = self.cursor.fetchall()
+            
+            records = []
+            for result in results:
+                records.append({
+                    'id': result[0],
+                    'keyword': result[1],
+                    'platform': result[2],
+                    'note_count': result[3],
+                    'created_at': result[4],
+                    'updated_at': result[5]
+                })
+            
+            print(f"✅ 成功获取 {len(records)} 条刷题记录")
+            return records
+        except Exception as e:
+            print(f"❌ 获取刷题记录失败: {e}")
+            return []
+    
+    def get_interview_questions(self, category: str = None, limit: int = 100) -> list:
+        """
+        获取面试题目
+        
+        Args:
+            category: 分类筛选
+            limit: 返回数量限制
+            
+        Returns:
+            面试题目列表
+        """
+        if not self.connection or not self.cursor:
+            print("❌ 数据库未连接，无法获取面试题目")
+            return []
+        
+        try:
+            if category:
+                select_sql = """
+                SELECT id, question_id, content, answer, category, difficulty, question_type, 
+                       explanation, source, source_url, note_id, created_at, updated_at
+                FROM interview_questions
+                WHERE category = %s
+                ORDER BY created_at DESC
+                LIMIT %s;
+                """
+                self.cursor.execute(select_sql, (category, limit))
+            else:
+                select_sql = """
+                SELECT id, question_id, content, answer, category, difficulty, question_type, 
+                       explanation, source, source_url, note_id, created_at, updated_at
+                FROM interview_questions
+                ORDER BY created_at DESC
+                LIMIT %s;
+                """
+                self.cursor.execute(select_sql, (limit,))
+            
+            results = self.cursor.fetchall()
+            
+            questions = []
+            for result in results:
+                questions.append({
+                    'id': result[0],
+                    'question_id': result[1],
+                    'content': result[2],
+                    'answer': result[3],
+                    'category': result[4],
+                    'difficulty': result[5],
+                    'question_type': result[6],
+                    'explanation': result[7],
+                    'source': result[8],
+                    'source_url': result[9],
+                    'note_id': result[10],
+                    'created_at': result[11],
+                    'updated_at': result[12]
+                })
+            
+            print(f"✅ 成功获取 {len(questions)} 道面试题目")
+            return questions
+        except Exception as e:
+            print(f"❌ 获取面试题目失败: {e}")
+            return []
+    
+    def get_leetcode_practice(self, status: str = None) -> list:
+        """
+        获取LeetCode刷题记录
+        
+        Args:
+            status: 状态筛选
+            
+        Returns:
+            LeetCode刷题记录列表
+        """
+        if not self.connection or not self.cursor:
+            print("❌ 数据库未连接，无法获取LeetCode刷题记录")
+            return []
+        
+        try:
+            if status:
+                select_sql = """
+                SELECT id, problem_id, problem_name, problem_url, difficulty, status, notes, created_at, updated_at
+                FROM leetcode_practice
+                WHERE status = %s
+                ORDER BY problem_id ASC;
+                """
+                self.cursor.execute(select_sql, (status,))
+            else:
+                select_sql = """
+                SELECT id, problem_id, problem_name, problem_url, difficulty, status, notes, created_at, updated_at
+                FROM leetcode_practice
+                ORDER BY problem_id ASC;
+                """
+                self.cursor.execute(select_sql)
+            
+            results = self.cursor.fetchall()
+            
+            problems = []
+            for result in results:
+                problems.append({
+                    'id': result[0],
+                    'problem_id': result[1],
+                    'problem_name': result[2],
+                    'problem_url': result[3],
+                    'difficulty': result[4],
+                    'status': result[5],
+                    'notes': result[6],
+                    'created_at': result[7],
+                    'updated_at': result[8]
+                })
+            
+            print(f"✅ 成功获取 {len(problems)} 条LeetCode刷题记录")
+            return problems
+        except Exception as e:
+            print(f"❌ 获取LeetCode刷题记录失败: {e}")
+            return []
     
 
     

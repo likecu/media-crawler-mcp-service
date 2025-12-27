@@ -54,7 +54,8 @@ OCR_CONFIG = {
 OUTPUT_DIR_CONFIG = {
     "simple": "大模型面试帖子",
     "multi_keyword": "大模型面试帖子_all",
-    "interview": "大模型面试帖子"
+    "interview": "大模型面试帖子",
+    "leetcode": "刷题经验分享"
 }
 
 # 获取输出目录
