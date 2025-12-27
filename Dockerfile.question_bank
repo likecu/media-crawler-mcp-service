@@ -1,0 +1,20 @@
+FROM --platform=linux/amd64 python:3.9-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libpq-dev \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --upgrade pip && pip install -r requirements.txt
+
+COPY . .
+
+ENV PYTHONPATH=/app
+
+EXPOSE 9092
+
+CMD ["python", "question_bank_api.py", "--host", "0.0.0.0", "--port", "9092"]
