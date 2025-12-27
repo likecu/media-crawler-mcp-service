@@ -9,9 +9,12 @@ services:
     restart: "no"
     volumes:
       - ./output:/app/output
+      - ./.env:/app/.env
     ports:
       - "8000:8000"
     command: python web_server.py
+    env_file:
+      - .env
 
   question-bank:
     build:
