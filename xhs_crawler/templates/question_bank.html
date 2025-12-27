@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>大模型面试题库 - AI智能刷题系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background: white;
+            border-radius: 16px;
+            padding: 24px 32px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        header h1 {
+            font-size: 28px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+        }
+        
+        header p {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 24px;
+        }
+        
+        .sidebar {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            height: fit-content;
+            position: sticky;
+            top: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .sidebar h3 {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .filter-section {
+            margin-bottom: 24px;
+        }
+        
+        .filter-section label {
+            display: block;
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        
+        .filter-section select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #e8e8e8;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #333;
+            background: white;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+        
+        .filter-section select:hover {
+            border-color: #667eea;
+        }
+        
+        .filter-section select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .category-list {
+            list-style: none;
+        }
+        
+        .category-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 4px;
+        }
+        
+        .category-item:hover {
+            background: #f5f5f5;
+        }
+        
+        .category-item.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .category-item .name {
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .category-item .count {
+            background: rgba(0, 0, 0, 0.1);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+        }
+        
+        .category-item.active .count {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-top: 20px;
+        }
+        
+        .stat-card {
+            background: #f8f9ff;
+            padding: 16px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .stat-card .value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-card .label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+        }
+        
+        .content-area {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .question-header {
+            background: white;
+            border-radius: 16px;
+            padding: 20px 24px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .question-count {
+            font-size: 16px;
+            color: #333;
+        }
+        
+        .question-count span {
+            color: #667eea;
+            font-weight: bold;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #f5f5f5;
+            color: #333;
+        }
+        
+        .btn-secondary:hover {
+            background: #e8e8e8;
+        }
+        
+        .question-card {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s;
+        }
+        
+        .question-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+        }
+        
+        .question-meta {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .tag {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .tag-category {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .tag-difficulty {
+            background: #f0f0f0;
+            color: #666;
+        }
+        
+        .tag-difficulty.easy {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+        
+        .tag-difficulty.medium {
+            background: #fff3e0;
+            color: #ef6c00;
+        }
+        
+        .tag-difficulty.hard {
+            background: #ffebee;
+            color: #c62828;
+        }
+        
+        .tag-type {
+            background: #e3f2fd;
+            color: #1565c0;
+        }
+        
+        .question-content {
+            font-size: 18px;
+            line-height: 1.8;
+            color: #333;
+            margin-bottom: 24px;
+            padding: 20px;
+            background: #f8f9ff;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .answer-section {
+            margin-top: 24px;
+        }
+        
+        .answer-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+        
+        .answer-header h4 {
+            font-size: 16px;
+            color: #333;
+        }
+        
+        .answer-content {
+            padding: 24px;
+            background: #f5f5f5;
+            border-radius: 12px;
+            line-height: 1.8;
+            color: #333;
+            display: none;
+        }
+        
+        .answer-content.show {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .action-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px solid #f0f0f0;
+        }
+        
+        .feedback-buttons {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .feedback-btn {
+            padding: 8px 16px;
+            border: 2px solid #e8e8e8;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 13px;
+            color: #666;
+        }
+        
+        .feedback-btn:hover {
+            border-color: #667eea;
+            color: #667eea;
+        }
+        
+        .feedback-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        
+        .navigation {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        
+        .nav-btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .nav-btn:disabled {
+            background: #e8e8e8;
+            color: #999;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .question-number {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .empty-state svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 20px;
+            color: #ccc;
+        }
+        
+        .empty-state h3 {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        
+        .empty-state p {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e8e8e8;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 16px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+        
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+        }
+        
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #f0f0f0;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+        
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar {
+                position: static;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 12px;
+            }
+            
+            header {
+                padding: 16px 20px;
+            }
+            
+            header h1 {
+                font-size: 22px;
+            }
+            
+            .action-bar {
+                flex-direction: column;
+                gap: 16px;
+            }
+            
+            .feedback-buttons {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .navigation {
+                width: 100%;
+                justify-content: space-between;
+            }
+        }
+        
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-overlay.show {
+            display: flex;
+        }
+        
+        .modal {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .modal h3 {
+            font-size: 20px;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        
+        .modal-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 大模型面试题库</h1>
+            <p>AI智能分类 · 全面覆盖 · 高效刷题</p>
+        </header>
+        
+        <div class="main-content">
+            <aside class="sidebar">
+                <h3>📚 题目分类</h3>
+                <ul class="category-list" id="categoryList">
+                    <li class="category-item active" data-category="all">
+                        <span class="name">全部题目</span>
+                        <span class="count" id="allCount">0</span>
+                    </li>
+                    <li class="category-item" data-category="transformer">
+                        <span class="name">Transformer</span>
+                        <span class="count" id="transformerCount">0</span>
+                    </li>
+                    <li class="category-item" data-category="llm_fundamentals">
+                        <span class="name">LLM基础知识</span>
+                        <span class="count" id="llm_fundamentalsCount">0</span>
+                    </li>
+                    <li class="category-item" data-category="rlhf">
+                        <span class="name">RLHF对齐</span>
+                        <span class="count" id="rlhfCount">0</span>
+                    </li>
+                    <li class="category-item" data-category="rag">
+                        <span class="name">RAG检索增强</span>
+                        <span class="count" id="ragCount">0</span>
+                    </li>
+                    <li class="category-item" data-category="prompt_engineering">
+                        <span class="name">提示工程</span>
+                        <span class="count" id="prompt_engineeringCount">0</span>
+                    </li>
+                    <li class="category-item" data-category="deployment">
+                        <span class="name">部署与推理</span>
+                        <span class="count" id="deploymentCount">0</span>
+                    </li>
+                    <li class="category-item" data-category="coding">
+                        <span class="name">编程实践</span>
+                        <span class="count" id="codingCount">0</span>
+                    </li>
+                    <li class="category-item" data-category="math">
+                        <span class="name">数学基础</span>
+                        <span class="count" id="mathCount">0</span>
+                    </li>
+                    <li class="category-item" data-category="nlp">
+                        <span class="name">NLP基础</span>
+                        <span class="count" id="nlpCount">0</span>
+                    </li>
+                </ul>
+                
+                <div class="filter-section" style="margin-top: 24px;">
+                    <label>🎯 难度筛选</label>
+                    <select id="difficultyFilter">
+                        <option value="">全部难度</option>
+                        <option value="easy">⭐ 简单</option>
+                        <option value="medium">⭐⭐ 中等</option>
+                        <option value="hard">⭐⭐⭐ 困难</option>
+                    </select>
+                </div>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="value" id="totalQuestions">0</div>
+                        <div class="label">总题目数</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="value" id="completedQuestions">0</div>
+                        <div class="label">已刷题目</div>
+                    </div>
+                </div>
+                
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                </div>
+                <p style="text-align: center; margin-top: 8px; font-size: 12px; color: #666;" id="progressText">完成进度 0%</p>
+            </aside>
+            
+            <main class="content-area">
+                <div class="question-header">
+                    <div class="question-count">
+                        当前题目：<span id="currentIndex">0</span> / <span id="totalIndex">0</span>
+                    </div>
+                    <div class="action-buttons">
+                        <button class="btn btn-secondary" onclick="shuffleQuestions()">
+                            🔀 随机打乱
+                        </button>
+                        <button class="btn btn-primary" onclick="showSettings()">
+                            ⚙️ 设置
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="questionContainer">
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                        </svg>
+                        <h3>暂无题目</h3>
+                        <p>请先加载题库或调整筛选条件</p>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+    
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal">
+            <h3>⚙️ 刷题设置</h3>
+            <div class="filter-section">
+                <label>📝 每次显示题目数量</label>
+                <select id="batchSize">
+                    <option value="1">1 题</option>
+                    <option value="5" selected>5 题</option>
+                    <option value="10">10 题</option>
+                    <option value="20">20 题</option>
+                </select>
+            </div>
+            <div class="filter-section">
+                <label>🎭 答案显示方式</label>
+                <select id="answerDisplay">
+                    <option value="manual">手动点击显示</option>
+                    <option value="auto">自动显示</option>
+                    <option value="timeout">3秒后自动显示</option>
+                </select>
+            </div>
+            <div style="display: flex; gap: 12px; margin-top: 24px;">
+                <button class="btn btn-primary" style="flex: 1;" onclick="saveSettings()">保存设置</button>
+                <button class="btn btn-secondary" onclick="closeSettings()">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let questionBank = {
+            questions: [],
+            currentIndex: 0,
+            filteredQuestions: [],
+            settings: {
+                batchSize: 5,
+                answerDisplay: 'manual'
+            },
+            completedQuestions: new Set()
+        };
+        
+        async function loadQuestions() {
+            try {
+                const response = await fetch('/api/question-bank/questions');
+                const data = await response.json();
+                
+                if (data.code === 0 && data.data) {
+                    questionBank.questions = data.data.questions;
+                    questionBank.filteredQuestions = [...questionBank.questions];
+                    
+                    updateCategoryCounts();
+                    updateStats();
+                    renderQuestion();
+                    
+                    document.getElementById('totalIndex').textContent = questionBank.filteredQuestions.length;
+                } else {
+                    loadSampleQuestions();
+                }
+            } catch (error) {
+                console.log('加载题库失败，使用示例数据:', error);
+                loadSampleQuestions();
+            }
+        }
+        
+        function loadSampleQuestions() {
+            questionBank.questions = [
+                {
+                    id: 1,
+                    content: '请详细解释Transformer中的Self-Attention机制，包括计算公式和具体实现步骤。',
+                    answer: 'Self-Attention是Transformer的核心机制。计算公式：\n\nAttention(Q, K, V) = softmax(QK^T/√d_k)V\n\n实现步骤：\n1. 将输入向量转换为Q（查询）、K（键）、V（值）三个矩阵\n2. 计算Q与K的点积，得到注意力分数\n3. 除以√d_k进行缩放，防止点积值过大\n4. 应用softmax获得注意力权重\n5. 用注意力权重对V进行加权求和\n\n多头注意力允许模型同时关注不同位置的不同表示子空间的信息。',
+                    category: 'transformer',
+                    difficulty: 'medium',
+                    type: '简答题'
+                },
+                {
+                    id: 2,
+                    content: 'LLM的预训练阶段通常使用哪种目标函数？请解释其原理和作用。',
+                    answer: 'LLM预训练主要使用自回归语言建模目标（Next Token Prediction）。\n\n原理：给定一个token序列 [t1, t2, ..., tn]，模型学习预测下一个token tn+1。\n\n损失函数：L = -Σ log P(tn+1 | t1, ..., tn)\n\n作用：\n1. 让模型学习语言的统计规律和语义知识\n2. 捕捉上下文依赖关系\n3. 建立世界知识的基础表示\n4. 为下游任务提供通用能力',
+                    category: 'llm_fundamentals',
+                    difficulty: 'easy',
+                    type: '概念题'
+                },
+                {
+                    id: 3,
+                    content: '什么是RLHF（基于人类反馈的强化学习）？它的三个主要步骤是什么？',
+                    answer: 'RLHF是一种让AI系统与人类偏好对齐的技术。\n\n三个主要步骤：\n\n1. 监督微调（SFT）：使用高质量示例数据对预训练模型进行微调\n2. 奖励模型训练：收集人类对不同输出的偏好排序，训练奖励模型\n3. PPO优化：使用PPO算法和奖励模型优化策略模型\n\n关键挑战：\n- 奖励黑客攻击\n- 人类反馈的质量和一致性\n- 训练稳定性',
+                    category: 'rlhf',
+                    difficulty: 'hard',
+                    type: '综合题'
+                },
+                {
+                    id: 4,
+                    content: 'RAG（检索增强生成）的工作流程是什么？它如何解决LLM的知识截止问题？',
+                    answer: 'RAG工作流程：\n\n1. 索引阶段：\n   - 文档分块（chunking）\n   - 向量化（使用embedding模型）\n   - 存储到向量数据库\n\n2. 检索阶段：\n   - 将用户查询向量化\n   - 在向量库中检索相似文档\n   - 返回top-k相关文档\n\n3. 生成阶段：\n   - 将检索到的文档与查询拼接\n   - 输入LLM生成回答\n\n解决知识截止问题的原理：\n- 实时检索最新信息\n- 不需要重新训练模型\n- 提供可追溯的参考来源',
+                    category: 'rag',
+                    difficulty: 'medium',
+                    type: '流程题'
+                },
+                {
+                    id: 5,
+                    content: '请解释Prompt Engineering中的Few-Shot Learning概念，并给出实际应用示例。',
+                    answer: 'Few-Shot Learning是在提示中提供少量示例，让模型学习任务模式。\n\n格式：\n- Zero-shot：无示例，直接指令\n- One-shot：一个示例\n- Few-shot：2-5个示例\n\n最佳实践：\n1. 示例要有代表性，涵盖不同情况\n2. 保持示例格式一致\n3. 相似示例放前面\n4. 标签分布要均衡\n\n示例：\n\n将评论分类为正面/负面：\n评论：我喜欢这个产品，非常实用！\n标签：正面\n\n评论：质量很差，不推荐购买。\n标签：负面\n\n评论：外观不错，但功能一般。\n标签：？',
+                    category: 'prompt_engineering',
+                    difficulty: 'easy',
+                    type: '应用题'
+                },
+                {
+                    id: 6,
+                    content: 'LLM部署中常见的量化技术有哪些？它们如何减少模型大小和加速推理？',
+                    answer: '常见量化技术：\n\n1. 训练后量化（PTQ）：\n   - INT8量化：将32位浮点数转换为8位整数\n   - INT4量化：进一步压缩到4位\n   - 典型工具：TensorRT、ONNX Runtime\n\n2. 量化感知训练（QAT）：\n   - 在训练中模拟量化效果\n   - 保持更好的模型精度\n\n3. GPTQ/AWQ：\n   - 基于分层优化\n   - 保持模型质量的压缩\n\n效果：\n- 模型大小减少2-4倍\n- 推理速度提升2-3倍\n- 显存占用显著降低',
+                    category: 'deployment',
+                    difficulty: 'medium',
+                    type: '技术题'
+                },
+                {
+                    id: 7,
+                    content: '请用Python实现一个简单的Transformer多头注意力机制。',
+                    answer: '```python\nimport torch\nimport torch.nn.functional as F\n\nclass MultiHeadAttention(nn.Module):\n    def __init__(self, d_model, num_heads):\n        super().__init__()\n        self.d_model = d_model\n        self.num_heads = num_heads\n        self.head_dim = d_model // num_heads\n        \n        self.W_q = nn.Linear(d_model, d_model)\n        self.W_k = nn.Linear(d_model, d_model)\n        self.W_v = nn.Linear(d_model, d_model)\n        self.W_o = nn.Linear(d_model, d_model)\n    \n    def forward(self, query, key, value, mask=None):\n        batch_size = query.size(0)\n        \n        # 线性变换并分割为多头\n        Q = self.W_q(query).view(batch_size, -1, self.num_heads, self.head_dim).transpose(1, 2)\n        K = self.W_k(key).view(batch_size, -1, self.num_heads, self.head_dim).transpose(1, 2)\n        V = self.W_v(value).view(batch_size, -1, self.num_heads, self.head_dim).transpose(1, 2)\n        \n        # Scaled dot-product attention\n        scores = torch.matmul(Q, K.transpose(-2, -1)) / math.sqrt(self.head_dim)\n        \n        if mask is not None:\n            scores = scores.masked_fill(mask == 0, -1e9)\n        \n        attention = F.softmax(scores, dim=-1)\n        output = torch.matmul(attention, V)\n        \n        # 合并多头\n        output = output.transpose(1, 2).contiguous().view(batch_size, -1, d_model)\n        \n        return self.W_o(output)\n```',
+                    category: 'coding',
+                    difficulty: 'hard',
+                    type: '编程题'
+                },
+                {
+                    id: 8,
+                    content: '在优化LLM时，如何计算和理解困惑度（Perplexity）？它与模型质量有什么关系？',
+                    answer: '困惑度（Perplexity）定义：\n\nPPL = 2^(-1/N * Σ log P(xi))\n\n或等价于：\nPPL = exp(-1/N * Σ log P(xi))\n\n计算步骤：\n1. 对测试集的每个token计算预测概率\n2. 取对数概率的平均值\n3. 取指数\n\n理解：\n- 困惑度越低，模型对数据的预测越准确\n- 相当于模型在每个位置的"有效词汇量"\n- PPL=100意味着模型预测下一个词时相当于从100个词中选择\n\n与质量的关系：\n- 困惑度是重要的评估指标，但不是唯一指标\n- 低困惑度 ≠ 好的生成质量\n- 需要结合人工评估综合判断',
+                    category: 'math',
+                    difficulty: 'medium',
+                    type: '概念题'
+                },
+                {
+                    id: 9,
+                    content: '请解释Word2Vec的工作原理，包括CBOW和Skip-gram两种模型结构。',
+                    answer: 'Word2Vec是经典的词向量学习方法。\n\n核心思想：通过上下文预测目标词（或反之），学习词的分布式表示。\n\nCBOW（Continuous Bag of Words）：\n- 输入：上下文词的向量\n- 输出：目标词的向量\n- 适合小数据集\n\nSkip-gram：\n- 输入：目标词的向量\n- 输出：上下文词的向量\n- 适合大数据集，效果通常更好\n\n训练技巧：\n1. 负采样：随机选择负样本替代全部softmax\n2. 层次softmax：使用霍夫曼树加速计算\n\n输出：词向量可以捕捉语义关系\n如：vec(king) - vec(man) + vec(woman) ≈ vec(queen)',
+                    category: 'nlp',
+                    difficulty: 'easy',
+                    type: '概念题'
+                },
+                {
+                    id: 10,
+                    content: 'Transformer中的位置编码有哪些常见方法？它们各自的优缺点是什么？',
+                    answer: '常见位置编码方法：\n\n1. 绝对位置编码：\n   - 可学习位置嵌入：训练时学习\n   - 正弦位置编码：使用sin/cos函数\n   优点：简单直观\n   缺点：难以泛化到更长序列\n\n2. 相对位置编码：\n   - Transformer-XL风格\n   - attention with relative positional bias\n   优点：可泛化到未见过的长度\n   缺点：实现复杂，计算开销大\n\n3. 旋转位置编码（RoPE）：\n   - 用于LLaMA等模型\n   - 通过旋转操作编码相对位置\n   优点：效果好，支持长上下文\n\n4. ALiBi：\n   - 简单的线性偏置\n   - 无需额外参数\n   优点：训练和推理高效',
+                    category: 'transformer',
+                    difficulty: 'hard',
+                    type: '综合题'
+                }
+            ];
+            
+            questionBank.filteredQuestions = [...questionBank.questions];
+            updateCategoryCounts();
+            updateStats();
+            renderQuestion();
+            
+            document.getElementById('totalIndex').textContent = questionBank.filteredQuestions.length;
+        }
+        
+        function updateCategoryCounts() {
+            const categories = [
+                'all', 'transformer', 'llm_fundamentals', 'rlhf', 'rag',
+                'prompt_engineering', 'deployment', 'coding', 'math', 'nlp'
+            ];
+            
+            categories.forEach(cat => {
+                if (cat === 'all') {
+                    document.getElementById('allCount').textContent = questionBank.questions.length;
+                } else {
+                    const count = questionBank.questions.filter(q => q.category === cat).length;
+                    const element = document.getElementById(cat + 'Count');
+                    if (element) {
+                        element.textContent = count;
+                    }
+                }
+            });
+        }
+        
+        function updateStats() {
+            document.getElementById('totalQuestions').textContent = questionBank.questions.length;
+            document.getElementById('completedQuestions').textContent = questionBank.completedQuestions.size;
+            
+            const progress = questionBank.questions.length > 0 
+                ? (questionBank.completedQuestions.size / questionBank.questions.length * 100).toFixed(1)
+                : 0;
+            
+            document.getElementById('progressFill').style.width = progress + '%';
+            document.getElementById('progressText').textContent = '完成进度 ' + progress + '%';
+        }
+        
+        function renderQuestion() {
+            const container = document.getElementById('questionContainer');
+            
+            if (questionBank.filteredQuestions.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                        </svg>
+                        <h3>暂无符合条件的题目</h3>
+                        <p>请尝试其他筛选条件</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const question = questionBank.filteredQuestions[questionBank.currentIndex];
+            const isCompleted = questionBank.completedQuestions.has(question.id);
+            
+            container.innerHTML = `
+                <div class="question-card">
+                    <div class="question-meta">
+                        <span class="tag tag-category">${getCategoryName(question.category)}</span>
+                        <span class="tag tag-difficulty ${question.difficulty}">${getDifficultyName(question.difficulty)}</span>
+                        <span class="tag tag-type">${question.type}</span>
+                    </div>
+                    
+                    <div class="question-content">
+                        ${question.content}
+                    </div>
+                    
+                    <div class="answer-section">
+                        <div class="answer-header">
+                            <h4>📖 参考答案</h4>
+                            <button class="btn btn-primary" onclick="toggleAnswer()">
+                                ${isAnswerVisible() ? '收起答案' : '显示答案'}
+                            </button>
+                        </div>
+                        <div class="answer-content ${isAnswerVisible() ? 'show' : ''}" id="answerContent">
+                            ${formatAnswer(question.answer)}
+                        </div>
+                    </div>
+                    
+                    <div class="action-bar">
+                        <div class="feedback-buttons">
+                            <button class="feedback-btn ${isCompleted ? 'active' : ''}" onclick="markCompleted(${question.id}, this)">
+                                ✅ 已掌握
+                            </button>
+                            <button class="feedback-btn" onclick="markReviewLater(${question.id})">
+                                🔄 稍后再练
+                            </button>
+                        </div>
+                        
+                        <div class="navigation">
+                            <button class="nav-btn" onclick="prevQuestion()" ${questionBank.currentIndex === 0 ? 'disabled' : ''}>
+                                ← 上一题
+                            </button>
+                            <span class="question-number">${questionBank.currentIndex + 1} / ${questionBank.filteredQuestions.length}</span>
+                            <button class="nav-btn" onclick="nextQuestion()" ${questionBank.currentIndex >= questionBank.filteredQuestions.length - 1 ? 'disabled' : ''}>
+                                下一题 →
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('currentIndex').textContent = questionBank.currentIndex + 1;
+            document.getElementById('totalIndex').textContent = questionBank.filteredQuestions.length;
+        }
+        
+        function getCategoryName(category) {
+            const names = {
+                'transformer': 'Transformer',
+                'llm_fundamentals': 'LLM基础',
+                'rlhf': 'RLHF对齐',
+                'rag': 'RAG检索',
+                'prompt_engineering': '提示工程',
+                'deployment': '部署推理',
+                'coding': '编程实践',
+                'math': '数学基础',
+                'nlp': 'NLP基础'
+            };
+            return names[category] || category;
+        }
+        
+        function getDifficultyName(difficulty) {
+            const names = {
+                'easy': '⭐ 简单',
+                'medium': '⭐⭐ 中等',
+                'hard': '⭐⭐⭐ 困难'
+            };
+            return names[difficulty] || difficulty;
+        }
+        
+        function formatAnswer(answer) {
+            return answer.replace(/```(\w*)\n([\s\S]*?)```/g, (match, lang, code) => {
+                return `<pre><code class="language-${lang}">${code.trim()}</code></pre>`;
+            }).replace(/\n/g, '<br>');
+        }
+        
+        let answerVisible = false;
+        
+        function isAnswerVisible() {
+            return answerVisible;
+        }
+        
+        function toggleAnswer() {
+            answerVisible = !answerVisible;
+            const content = document.getElementById('answerContent');
+            if (content) {
+                content.classList.toggle('show', answerVisible);
+                content.style.display = answerVisible ? 'block' : 'none';
+            }
+        }
+        
+        function markCompleted(id, btn) {
+            questionBank.completedQuestions.add(id);
+            btn.classList.add('active');
+            updateStats();
+            
+            if (questionBank.settings.answerDisplay === 'auto') {
+                setTimeout(() => {
+                    nextQuestion();
+                }, 2000);
+            }
+        }
+        
+        function markReviewLater(id) {
+            const question = questionBank.questions.find(q => q.id === id);
+            if (question) {
+                questionBank.filteredQuestions.push(question);
+                renderQuestion();
+            }
+        }
+        
+        function prevQuestion() {
+            if (questionBank.currentIndex > 0) {
+                questionBank.currentIndex--;
+                answerVisible = false;
+                renderQuestion();
+            }
+        }
+        
+        function nextQuestion() {
+            if (questionBank.currentIndex < questionBank.filteredQuestions.length - 1) {
+                questionBank.currentIndex++;
+                answerVisible = false;
+                renderQuestion();
+            }
+        }
+        
+        function shuffleQuestions() {
+            for (let i = questionBank.filteredQuestions.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [questionBank.filteredQuestions[i], questionBank.filteredQuestions[j]] = 
+                [questionBank.filteredQuestions[j], questionBank.filteredQuestions[i]];
+            }
+            questionBank.currentIndex = 0;
+            answerVisible = false;
+            renderQuestion();
+        }
+        
+        function showSettings() {
+            document.getElementById('settingsModal').classList.add('show');
+        }
+        
+        function closeSettings() {
+            document.getElementById('settingsModal').classList.remove('show');
+        }
+        
+        function saveSettings() {
+            questionBank.settings.batchSize = parseInt(document.getElementById('batchSize').value);
+            questionBank.settings.answerDisplay = document.getElementById('answerDisplay').value;
+            closeSettings();
+        }
+        
+        document.getElementById('categoryList').addEventListener('click', function(e) {
+            const item = e.target.closest('.category-item');
+            if (item) {
+                document.querySelectorAll('.category-item').forEach(el => el.classList.remove('active'));
+                item.classList.add('active');
+                
+                const category = item.dataset.category;
+                filterQuestions(category, document.getElementById('difficultyFilter').value);
+            }
+        });
+        
+        document.getElementById('difficultyFilter').addEventListener('change', function() {
+            const category = document.querySelector('.category-item.active').dataset.category;
+            filterQuestions(category, this.value);
+        });
+        
+        function filterQuestions(category, difficulty) {
+            let filtered = [...questionBank.questions];
+            
+            if (category && category !== 'all') {
+                filtered = filtered.filter(q => q.category === category);
+            }
+            
+            if (difficulty) {
+                filtered = filtered.filter(q => q.difficulty === difficulty);
+            }
+            
+            questionBank.filteredQuestions = filtered;
+            questionBank.currentIndex = 0;
+            answerVisible = false;
+            
+            document.getElementById('totalIndex').textContent = filtered.length;
+            renderQuestion();
+        }
+        
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowLeft') {
+                prevQuestion();
+            } else if (e.key === 'ArrowRight') {
+                nextQuestion();
+            } else if (e.key === ' ' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+                e.preventDefault();
+                toggleAnswer();
+            }
+        });
+        
+        document.getElementById('settingsModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeSettings();
+            }
+        });
+        
+        window.onload = function() {
+            loadQuestions();
+        };
+    </script>
+</body>
+</html>
