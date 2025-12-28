@@ -329,7 +329,7 @@ async def start_login(service, session: LoginSession, payload: LoginStartPayload
         session.status = "failed"
         session.message = str(exc) or "登录失败"
         await service.persist_session(session)
-        await _cleanup_browser_resources(session)
+        await _cleanup_browser_resources(session.context_page, session.browser_context, session.playwright)
         await browser_manager.release_context(Platform.XIAOHONGSHU.value, keep_alive=False)
         return session.to_public_dict()
 
@@ -357,7 +357,7 @@ async def _handle_cookie_login(session: LoginSession, login_obj: XiaoHongShuLogi
         if login_success:
             # Cookie 登录成功，直接完成
             await _save_login_success(session, login_obj, service)
-            await _cleanup_browser_resources(session)
+            await _cleanup_browser_resources(session.context_page, session.browser_context, session.playwright)
             return True
 
         # Cookie登录失败，如果原始请求是二维码登录，则回退
@@ -422,14 +422,26 @@ async def _handle_qrcode_login(session: LoginSession, login_obj: XiaoHongShuLogi
                     start_ts = time.time()
 
                     while True:
-                        # 检查 web_session 是否发生了变化（说明用户扫码登录了）
+                        # 1) DOM 判断：检查是否出现了用户相关的DOM元素
+                        try:
+                            dom_ok = await session.context_page.evaluate(
+                                "() => !!document.querySelector('.main-container .user .link-wrapper .channel')"
+                            )
+                            if dom_ok:
+                                logger.info(f"[xhs.login] 检测到登录状态变化（DOM）: {before_session[:20] if before_session else 'None'}...")
+                                await _save_login_success(session, login_obj, service)
+                                break
+                        except Exception as e:
+                            logger.debug(f"[xhs.login] DOM检查出错: {e}")
+
+                        # 2) Cookie 判断：检查 web_session 是否发生了变化
                         cookies_current = await session.browser_context.cookies()
                         _, cookie_dict_current = crawler_util.convert_cookies(cookies_current)
                         current_session = cookie_dict_current.get("web_session")
 
                         # 只有当 web_session 发生变化时，才认为登录成功
                         if current_session and current_session != before_session:
-                            logger.info(f"[xhs.login] 检测到登录状态变化: {before_session[:20] if before_session else 'None'} -> {current_session[:20]}...")
+                            logger.info(f"[xhs.login] 检测到登录状态变化（Cookie）: {before_session[:20] if before_session else 'None'} -> {current_session[:20]}...")
                             await _save_login_success(session, login_obj, service)
                             break
 
@@ -445,8 +457,7 @@ async def _handle_qrcode_login(session: LoginSession, login_obj: XiaoHongShuLogi
                     session.message = f"登录失败: {exc}"
                     await service.persist_session(session)
                 finally:
-                    await asyncio.sleep(2)
-                    await _cleanup_browser_resources(session)
+                    await _cleanup_browser_resources_for_session(session)
 
             task = asyncio.create_task(_poll_qrcode())
             session.runtime["task"] = task
@@ -454,13 +465,13 @@ async def _handle_qrcode_login(session: LoginSession, login_obj: XiaoHongShuLogi
             session.status = "failed"
             session.message = "二维码生成失败，请重新开始登录"
             await service.persist_session(session)
-            await _cleanup_browser_resources(session)
+            await _cleanup_browser_resources_for_session(session)
 
     except Exception as exc:
         session.status = "failed"
         session.message = f"二维码登录失败: {exc}"
         await service.persist_session(session)
-        await _cleanup_browser_resources(session)
+        await _cleanup_browser_resources(session.context_page, session.browser_context, session.playwright)
 
 
 async def _handle_other_login(session: LoginSession, login_obj: XiaoHongShuLogin, service):
@@ -479,7 +490,7 @@ async def _handle_other_login(session: LoginSession, login_obj: XiaoHongShuLogin
             await service.persist_session(session)
         finally:
             await asyncio.sleep(3)
-            await _cleanup_browser_resources(session)
+            await _cleanup_browser_resources(session.context_page, session.browser_context, session.playwright)
 
     task = asyncio.create_task(_execute_login())
     session.runtime["task"] = task
@@ -500,20 +511,38 @@ async def _save_login_success(session: LoginSession, login_obj: XiaoHongShuLogin
     session.metadata["cookie_dict"] = cookie_dict
     session.metadata["cookie_str"] = cookie_str
 
-    # 保存平台状态
-    is_logged_in = bool(cookie_dict.get("web_session"))
-    user_info = {
-        "web_session": cookie_dict.get("web_session", "")[:20] + "..."
-    } if is_logged_in else {}
-
+    # 保存平台状态 - 双重验证：DOM检查 + Cookie检查
+    is_logged_in = False
+    user_info = {}
+    
+    # 1) 先尝试DOM检查确认登录状态
+    try:
+        dom_ok = await session.context_page.evaluate(
+            "() => !!document.querySelector('.main-container .user .link-wrapper .channel')"
+        )
+        if dom_ok:
+            is_logged_in = True
+            logger.info(f"[xhs.login] DOM检查确认登录成功")
+    except Exception as e:
+        logger.debug(f"[xhs.login] 保存状态时DOM检查出错: {e}")
+    
+    # 2) 如果DOM检查失败，再依赖Cookie检查
+    if not is_logged_in:
+        is_logged_in = bool(cookie_dict.get("web_session"))
+        logger.info(f"[xhs.login] Cookie检查登录状态: {is_logged_in}")
+    
     if is_logged_in:
+        # 构建用户信息
+        if cookie_dict.get("web_session"):
+            user_info["web_session"] = cookie_dict.get("web_session", "")[:20] + "..."
+        
         state = await login_obj.create_success_state(cookie_str, cookie_dict, user_info)
     else:
         state = await login_obj.create_failed_state("登录成功但未获取到有效Cookie")
 
     await service.persist_session(session)
     await service._storage.save_platform_state(state)
-    await _cleanup_browser_resources(session)
+    await _cleanup_browser_resources_for_session(session)
 
 
 async def _save_login_failure(session: LoginSession, login_obj: XiaoHongShuLogin, service):
@@ -531,11 +560,11 @@ async def _save_login_failure(session: LoginSession, login_obj: XiaoHongShuLogin
 
     await service.persist_session(session)
     await service._storage.save_platform_state(state)
-    await _cleanup_browser_resources(session)
+    await _cleanup_browser_resources_for_session(session)
 
 
-async def _cleanup_browser_resources(session: LoginSession):
-    """清理浏览器资源"""
+async def _cleanup_browser_resources_for_session(session: LoginSession):
+    """清理浏览器资源 - 针对登录会话"""
     if session.browser_context:
         try:
             # 注意：不关闭 browser_context，因为它由 browser_manager 管理
@@ -553,7 +582,7 @@ async def _cleanup_browser_resources(session: LoginSession):
 
 
 async def _cleanup_browser_resources(context_page, browser_context, playwright) -> None:
-    """清理浏览器资源"""
+    """清理浏览器资源 - 针对独立资源"""
     cleanup_tasks = []
     
     if context_page:
