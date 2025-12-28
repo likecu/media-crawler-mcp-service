@@ -42,7 +42,7 @@ services:
 
   mcp-service:
     build:
-      context: .
+      context: ./media-crawler-mcp-service
       dockerfile: Dockerfile
     image: media-crawler-mcp:latest
     restart: unless-stopped

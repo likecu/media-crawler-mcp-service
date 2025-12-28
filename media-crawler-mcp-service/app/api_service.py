@@ -13,7 +13,7 @@ from app.api.endpoints import main_app, bili_mcp, xhs_mcp
 from app.providers.cache.queue import PublishQueue
 from app.providers.database.pool_manager import get_pool_manager, close_pool_manager
 from app.core.crawler.platforms.xhs.publish import register_xhs_publisher
-from app.core.monitoring.metrics import metrics_collector
+from app.core.monitoring import metrics_collector
 
 
 import asyncio

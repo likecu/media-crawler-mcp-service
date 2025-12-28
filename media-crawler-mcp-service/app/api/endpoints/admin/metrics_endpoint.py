@@ -6,18 +6,24 @@ from __future__ import annotations
 from starlette.responses import Response
 
 from app.api.endpoints import main_app
-from app.core.monitoring.metrics import metrics_collector
+from app.core.monitoring.metrics import get_metrics_collector
+
+
+def _get_metrics_collector():
+    """获取指标收集器单例"""
+    return get_metrics_collector()
 
 
 @main_app.custom_route("/metrics", methods=["GET"])
 async def metrics(request):
     """
     Prometheus 指标端点
-    
+
     Returns:
         Response: Prometheus 格式的指标数据
     """
     try:
+        metrics_collector = _get_metrics_collector()
         metrics_collector.update_system_metrics()
         output = metrics_collector.get_metrics()
         return Response(
@@ -40,11 +46,12 @@ async def metrics(request):
 async def crawler_metrics(request):
     """
     爬虫专用指标端点
-    
+
     Returns:
         Response: Prometheus 格式的爬虫指标数据
     """
     try:
+        metrics_collector = _get_metrics_collector()
         metrics_collector.update_system_metrics()
         output = metrics_collector.get_crawler_metrics()
         return Response(
