@@ -1,0 +1,98 @@
+[tool.poetry]
+name = "media-crawler-mcp-service"
+version = "0.1.0"
+description = "MediaCrawler 的社交媒体爬虫功能暴露为 MCP 协议工具"
+authors = ["yancyyu <yancyyu.ok@gmail.com>"]
+readme = "README.md"
+packages = [{include = "app"}]
+
+[tool.poetry.dependencies]
+python = ">=3.13,<4"
+# FastMCP & Web Framework
+asyncpg = "^0.30.0"
+alembic = ">=1.16.5"
+
+httpx = ">=0.28.1"
+jinja2 = "^3.1.0"
+loguru = "^0.7.0"
+pydantic = "^2.5.0"
+pydantic-settings = "^2.1.0"
+python-multipart = "^0.0.20"
+pyyaml = "^6.0.0"
+
+cryptography = ">=45.0.7"
+jieba = "0.42.1"
+opencv-python = ">=4.11.0.86"
+playwright = ">=1.49.0"
+pyexecjs = "1.5.1"
+pyhumps = ">=3.8.0"
+ujson = "^5.11.0"
+python-dotenv = "^1.2.1"
+fastmcp = "^2.13.0.1"
+fastmcp-ui = "^0.1.0"
+uvicorn = "^0.38.0"
+websockets = ">=15.0.1"
+pandas = "^2.3.3"
+aiofiles = "^25.1.0"
+tortoise-orm = "^0.25.1"
+tenacity = "^9.1.2"
+pillow = "^12.0.0"
+redis = "^7.0.0"
+psutil = "^7.1.2"
+psycopg2-binary = "^2.9.10"
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.0.0"
+flake8 = "^6.0.0"
+isort = "^5.12.0"
+mypy = "^1.7.0"
+pytest = "^7.4.0"
+pytest-asyncio = "^0.21.0"
+
+[tool.black]
+line-length = 88
+target-version = ['py311']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 88
+known_first_party = ["app", "media_crawler"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+asyncio_mode = "auto"
+

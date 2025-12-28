@@ -52,17 +52,14 @@ dist/
 build/
 *.egg-info/
 
-# 嵌入的git仓库
-media-crawler-mcp-service/
+# 爬虫生成的JSON文件
+*_detail.json
+*_posts.json
+all_search_results.json
+原始搜索结果.json
 
 # OCR相关
 /Volumes/600g/app1/doubao获取/
 
 # 生成的HTML文件
 *.html
-
-# 爬虫生成的JSON文件
-*_detail.json
-*_posts.json
-all_search_results.json
-原始搜索结果.json
