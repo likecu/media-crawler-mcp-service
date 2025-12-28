@@ -40,6 +40,7 @@ pillow = "^12.0.0"
 redis = "^7.0.0"
 psutil = "^7.1.2"
 psycopg2-binary = "^2.9.10"
+prometheus-client = "^0.21.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.0.0"
