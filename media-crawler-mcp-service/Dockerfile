@@ -57,6 +57,8 @@ COPY . .
 RUN groupadd -g 1000 appgroup \
  && useradd -m -u 1000 -g appgroup appuser \
  && mkdir -p /app/data /app/logs /app/browser_data \
+ && mkdir -p /app/browser_data/{xhs,bili,bili_qrcode,dy,ks,wb} \
+ && chmod 777 /app/browser_data \
  && chown -R appuser:appgroup /app
 
 USER appuser
