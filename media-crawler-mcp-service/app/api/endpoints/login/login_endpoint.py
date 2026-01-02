@@ -31,7 +31,7 @@ async def login_get_platforms(request):
         platforms = service.get_supported_platforms()
         if not platforms:
             fallback = [
-                p.value if hasattr(p, "value") else str(p)
+                p if isinstance(p, str) else p.value
                 for p in getattr(global_settings.platform, "enabled_platforms", [])
             ]
             logger.warning(

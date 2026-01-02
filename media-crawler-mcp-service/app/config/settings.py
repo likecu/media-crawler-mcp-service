@@ -152,8 +152,8 @@ class PublishConfig(BaseModel):
 
 class PlatformConfig(BaseModel):
     """平台配置"""
-    enabled_platforms: Union[List[Platform], str] = Field(
-        default="all",
+    enabled_platforms: List[Platform] = Field(
+        default_factory=lambda: list(Platform),
         description="启用的平台列表，默认全部启用"
     )
     default_save_format: SaveFormat = SaveFormat.JSON

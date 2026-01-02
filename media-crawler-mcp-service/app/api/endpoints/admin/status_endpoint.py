@@ -189,8 +189,11 @@ async def get_platforms_status(request):
         }
 
         platforms = []
-        for platform_enum in global_settings.platform.enabled_platforms:
-            platform_code = platform_enum.value
+        for platform_item in global_settings.platform.enabled_platforms:
+            if isinstance(platform_item, str):
+                platform_code = platform_item
+            else:
+                platform_code = platform_item.value
             platform_name = platform_names.get(platform_code, platform_code)
 
             state: Optional[PlatformLoginState] = None
