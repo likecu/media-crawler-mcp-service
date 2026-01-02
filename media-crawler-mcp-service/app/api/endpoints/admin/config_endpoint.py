@@ -37,7 +37,7 @@ async def get_platform_config(request):
     """获取平台配置"""
     try:
         enabled_codes = [
-            p.value if hasattr(p, "value") else str(p)
+            p.value if hasattr(p, "value") else p
             for p in global_settings.platform.enabled_platforms
         ]
         platform_names = {

@@ -51,7 +51,7 @@ class LoginService:
     def get_supported_platforms(self) -> List[str]:
         """获取支持的登录平台"""
         enabled = [
-            p.value
+            p.value if hasattr(p, 'value') else p
             for p in global_settings.platform.enabled_platforms
         ]
         return [platform for platform in self._platform_modules if platform in enabled]
