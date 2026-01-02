@@ -122,7 +122,7 @@ def register_resources(app: FastMCP) -> None:
         import json
         from app.config.settings import global_settings
 
-        enabled = [p.value if hasattr(p, 'value') else str(p) for p in global_settings.platform.enabled_platforms]
+        enabled = [p.value if hasattr(p, 'value') else p for p in global_settings.platform.enabled_platforms]
         platform_names = {
             "bili": "哔哩哔哩",
             "xhs": "小红书",
@@ -134,7 +134,7 @@ def register_resources(app: FastMCP) -> None:
         }
         all_platforms = [
             {"code": code, "name": platform_names.get(code, code)}
-            for code in [p.value for p in global_settings.platform.enabled_platforms]
+            for code in [p.value if hasattr(p, 'value') else p for p in global_settings.platform.enabled_platforms]
         ]
 
         return json.dumps({
