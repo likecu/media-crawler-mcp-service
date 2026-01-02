@@ -1,0 +1,36 @@
+# 排除 browser_data 目录，避免覆盖 Dockerfile 中创建的目录结构
+browser_data/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Python environment
+.venv/
+venv/
+env/
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Logs
+*.log
+logs/
+
+# Test
+.pytest_cache/
+.coverage
+htmlcov/
+
+# OS
+.DS_Store
+Thumbs.db
