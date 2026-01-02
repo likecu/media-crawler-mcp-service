@@ -7,3 +7,10 @@ browser_data/
 nul
 *.pyc
 .env
+
+# Large test files and outputs
+media-crawler-mcp-service-sync.tar.gz
+remote_test_output/
+test_output/
+test_remote_api.py
+分解
