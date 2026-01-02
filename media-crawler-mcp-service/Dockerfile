@@ -61,8 +61,12 @@ RUN groupadd -g 1000 appgroup \
  && chmod 777 /app/browser_data \
  && chown -R appuser:appgroup /app
 
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
 USER appuser
 
 EXPOSE 9090
 
+ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["python", "main.py"]
