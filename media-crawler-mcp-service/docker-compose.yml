@@ -59,7 +59,7 @@ services:
       REDIS__HOST: redis
       REDIS__PORT: 6379
     ports:
-      - "${APP__PORT:-9090}:9090"
+      - "${APP__PORT:-9091}:9090"
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
